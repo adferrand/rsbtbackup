@@ -25,23 +25,23 @@
 class RsyncBtrfs:
     # This function initiates a backup directory args.DESTPATH
     def init(self,args):
-        print "Initialization of backup directory '%s'" % (args.DESTPATH)
+        print("Initialization of backup directory '%s'" % (args.DESTPATH))
         if not os.path.isfile(args.DESTPATH+"/.log/rsyncbtrfs"):
             if not os.path.isdir(args.DESTPATH+"/.log"):
                 os.mkdir(args.DESTPATH+"/.log")
             try:
                 open(args.DESTPATH+"/.log/rsyncbtrfs","a").close()
             except:
-                print "Error : invalid backup directory"
+                print("Error : invalid backup directory")
 
     # This function executes a backup of args.SRCPATH on args.DESTPATH
     def backup(self,args):
         date_now_str = datetime.datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
         if not os.path.isdir(args.DESTPATH):
-            print "Error : invalid backup directory"
+            print("Error : invalid backup directory")
             exit()
         if not os.path.isfile(args.DESTPATH+"/.log/rsyncbtrfs"):
-            print "The given backup directory is not initiated. The following command must be executed before any backup : 'rsyncbtrfs init %s'" % (args.DESTPATH)
+            print("The given backup directory is not initiated. The following command must be executed before any backup : 'rsyncbtrfs init %s'" % (args.DESTPATH))
             exit()
         logger = self.start_logging(args.DESTPATH+"/.log")
         logger.info("The backup of '%s' on '%s' has started" % (args.SRCPATH,args.DESTPATH)) 
