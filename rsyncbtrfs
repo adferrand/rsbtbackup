@@ -45,10 +45,10 @@ class RsyncBtrfs:
         date_now_str = datetime.datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
         if not os.path.isdir(args.DESTPATH):
             print("Error : invalid backup directory")
-            exit()
+            sys.exit(1)
         if not os.path.isfile(args.DESTPATH+"/.log/rsyncbtrfs"):
             print("The given backup directory is not initiated. The following command must be executed before any backup : 'rsyncbtrfs init %s'" % (args.DESTPATH))
-            exit()
+            sys.exit(1)
         logger = self.start_logging(args.DESTPATH+"/.log")
         logger.info("The backup of '%s' on '%s' has started" % (args.SRCPATH,args.DESTPATH)) 
         # Creation of a Btrfs subvolume and start of the backup
@@ -67,7 +67,7 @@ class RsyncBtrfs:
         if retcode :
             logger.error("An error occured during rsync execution. A pending backup lies in '%s'" % (args.DESTPATH+"/pending"))
             raise OSError()
-            exit()
+            sys.exit(1)
         # The backup has been done without issue. The subvolume takes its final name. The symlink cur points on the latter.
         self.subprocess_logged(["/bin/rm","-f",args.DESTPATH+"/cur"],logger)
         self.subprocess_logged(["/bin/ln","-s",date_now_str,args.DESTPATH+"/cur"],logger)
@@ -120,5 +120,8 @@ if __name__ == "__main__":
     backup_parser.set_defaults(func=rsyncbtrfs.backup)
 
     # Handling entry parameters and ad-hoc function execution if needed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(2)
     args = parser.parse_args()
     args.func(args)
