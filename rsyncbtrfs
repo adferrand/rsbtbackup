@@ -54,12 +54,16 @@ class RsyncBtrfs:
         # Creation of a Btrfs subvolume and start of the backup
         #fnull = open(os.devnull,'w')
         if os.path.isdir(args.DESTPATH+"/cur"):
-        # No backup has been done yet : full backup
+        # At least one backup has already been done : incremental backup
             if not os.path.isdir(args.DESTPATH+"/pending"):
-                self.subprocess_logged(["/sbin/btrfs","subvolume","snapshot",args.DESTPATH+"/"+os.readlink(args.DESTPATH+"/cur"),args.DESTPATH+"/pending"],logger)
+                real_cur_path = args.DESTPATH+"/"+os.readlink(args.DESTPATH+"/cur")
+                errcode = self.subprocess_logged(["/sbin/btrfs","subvolume","snapshot",real_cur_path,args.DESTPATH+"/pending"],logger)
+                if errcode:
+                    logger.error("An error occured while creating a snapshot of %s. Make sure that %s is a Btrfs subvolume." % (real_cur_path,real_cur_path))
+                    sys.exit(1)
             retcode = self.subprocess_logged(["/usr/bin/rsync","--delete","--delete-before","--delete-excluded","--inplace","--no-whole-file","-a",args.SRCPATH+"/",args.DESTPATH+"/pending"],logger)
         else:
-        # At least one backup has already been done : incremental backup
+        # No backup has been done yet : full backup
             if not os.path.isdir(args.DESTPATH+"/pending"):
                 self.subprocess_logged(["/sbin/btrfs","subvolume","create",args.DESTPATH+"/pending"],logger)
             retcode = self.subprocess_logged(["/usr/bin/rsync","-a",args.SRCPATH+"/",args.DESTPATH+"/pending"],logger)
