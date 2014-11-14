@@ -58,8 +58,8 @@ class RsyncBtrfs:
             if not os.path.isdir(args.DESTPATH+"/pending"):
                 real_cur_path = args.DESTPATH+"/"+os.readlink(args.DESTPATH+"/cur")
                 errcode = self.subprocess_logged(["/sbin/btrfs","subvolume","snapshot",real_cur_path,args.DESTPATH+"/pending"],logger)
-                if errcode:
-                    logger.error("An error occured while creating a snapshot of %s. Make sure that %s is a Btrfs subvolume." % (real_cur_path,real_cur_path))
+                if errcode != 0:
+                    logger.error("An error (%s) occured while creating a snapshot of %s. Make sure that %s is a Btrfs subvolume." % (-errcode,real_cur_path,real_cur_path))
                     sys.exit(1)
             retcode = self.subprocess_logged(["/usr/bin/rsync","--delete","--delete-before","--delete-excluded","--inplace","--no-whole-file","-a",args.SRCPATH+"/",args.DESTPATH+"/pending"],logger)
         else:
@@ -67,9 +67,9 @@ class RsyncBtrfs:
             if not os.path.isdir(args.DESTPATH+"/pending"):
                 self.subprocess_logged(["/sbin/btrfs","subvolume","create",args.DESTPATH+"/pending"],logger)
             retcode = self.subprocess_logged(["/usr/bin/rsync","-a",args.SRCPATH+"/",args.DESTPATH+"/pending"],logger)
-        # We check if everything went well
-        if retcode :
-            logger.error("An error occured during rsync execution. A pending backup lies in '%s'" % (args.DESTPATH+"/pending"))
+        # We check if everything went well (rsync errcode 24 is ignored as not a real error in backup context)
+        if retcode != 0 and retcode != -24:
+            logger.error("An error (%s) occured during rsync execution. A pending backup lies in '%s'" % (-retcode,args.DESTPATH+"/pending"))
             raise OSError()
             sys.exit(1)
         # The backup has been done without issue. The subvolume takes its final name. The symlink cur points on the latter.
@@ -98,10 +98,8 @@ class RsyncBtrfs:
         if stderr:
             logger.error("An error occured during the execution of : %s" % execution_string)
             logger.error(stderr)
-            # The function returns True in order to raise the exception
-            return True
-        # Everything went well, the function returns False
-        return False
+        # Return the child code
+        return process.returncode
 
 # Rsyncbtrfs execution by a shell
 if __name__ == "__main__":
