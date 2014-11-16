@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# RsbtBackup [version 1.0.3]
+#
+# RsbtBackup is a simple incremental backup tool which uses the 
+# incremental snapshot capability of a Btrfs subvolume.
+#
+# Copyright 2014 Adrien Ferrand <ferrand.ad@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License as published by the 
+# Free Software Foundation, either version 3 of the License, or (at your 
+# option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along 
+# with this program. If not, see <http://www.gnu.org/licenses/>.
+
+import os,sys
+import argparse
+import subprocess
+import datetime
+import logging,logging.handlers
+
+# RsbtBackup class definition
+class RsbtBackup:
+    # This function initiates a backup directory args.DESTPATH
+    @staticmethod
+    def init(args):
+        destpath = args.pop('DESTPATH')
+        print("Initialization of backup directory '%s'" % (destpath))
+        if not os.path.isfile(destpath+"/.log/rsbtbackup"):
+            if not os.path.isdir(destpath+"/.log"):
+                retcode = subprocess.call(["/sbin/btrfs","subvolume","create",destpath+"/.log"])
+                if retcode != 0:
+                    print("Error : invalid backup directory. It doesn't exist, is not writable or is not on a btrfs partition.")
+                    os.exit(1)
+            try:
+                open(destpath+"/.log/rsbtbackup","a").close()
+            except:
+                print("Error : invalid backup directory")
+
+    # This function executes a backup of args.SRCPATH on args.DESTPATH
+    def backup(self,args):
+        destpath = args.pop('DESTPATH')
+        srcpath = args.pop('SRCPATH')
+        date_now_str = datetime.datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
+        if not os.path.isdir(destpath):
+            print("Error : invalid backup directory")
+            sys.exit(1)
+        if not os.path.isfile(destpath+"/.log/rsbtbackup"):
+            print("The given backup directory is not initiated. The following command must be executed before any backup : 'rsbtbackup init %s'" % destpath)
+            sys.exit(1)
+        logger = self.start_logging(destpath+"/.log")
+        logger.info("The backup of '%s' on '%s' has started" % (srcpath,destpath)) 
+        # Creation of a Btrfs subvolume and start of the backup
+        #fnull = open(os.devnull,'w')
+        if os.path.isdir(destpath+"/cur"):
+        # At least one backup has already been done : incremental backup
+            if not os.path.isdir(destpath+"/pending"):
+                real_cur_path = destpath+"/"+os.readlink(destpath+"/cur")
+                errcode = self.subprocess_logged(["/sbin/btrfs","subvolume","snapshot",real_cur_path,destpath+"/pending"],logger)
+                if errcode != 0:
+                    logger.error("An error (%s) occured while creating a snapshot of %s. Make sure that %s is a Btrfs subvolume." % (-errcode,real_cur_path,real_cur_path))
+                    sys.exit(1)
+            retcode = self.subprocess_logged(["/usr/bin/rsync","--delete","--delete-before","--delete-excluded","--inplace","--no-whole-file","-a",srcpath+"/",destpath+"/pending"],logger)
+        else:
+        # No backup has been done yet : full backup
+            if not os.path.isdir(destpath+"/pending"):
+                self.subprocess_logged(["/sbin/btrfs","subvolume","create",destpath+"/pending"],logger)
+            retcode = self.subprocess_logged(["/usr/bin/rsync","-a",srcpath+"/",destpath+"/pending"],logger)
+        # We check if everything went well (rsync errcode 24 is ignored as not a real error in backup context)
+        if retcode != 0 and retcode != -24:
+            logger.error("An error (%s) occured during rsync execution. A pending backup lies in '%s'" % (-retcode,destpath+"/pending"))
+            raise OSError()
+            sys.exit(1)
+        # The backup has been done without issue. The subvolume takes its final name. The symlink cur points on the latter.
+        self.subprocess_logged(["/bin/rm","-f",destpath+"/cur"],logger)
+        self.subprocess_logged(["/bin/ln","-s",date_now_str,destpath+"/cur"],logger)
+        os.rename(destpath+"/pending",destpath+"/"+date_now_str)
+        logger.info("The backup of '%s' on '%s' has ended without error" % (srcpath,destpath))
+
+    # This function activates the logging process of rsbtbackup
+    @staticmethod
+    def start_logging(path):
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+        file_handler = logging.handlers.RotatingFileHandler('%s/activity.log' % path, 'a', 1000000, 1)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        return logger
+
+    # This function calls an os command with logging
+    @staticmethod
+    def subprocess_logged(execution_string,logger):
+        process = subprocess.Popen(execution_string,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        stdout,stderr = process.communicate()
+        if stdout:
+            logger.info(stdout)
+        if stderr:
+            logger.error("An error occured during the execution of : %s" % execution_string)
+            logger.error(stderr)
+        # Return the child code
+        return process.returncode
+
+# RsbtBackup execution by a shell
+if __name__ == "__main__":
+    # Initiate
+    rsbtbackup = RsbtBackup()
+
+    # RsbtBackup entry parameters handler
+    parser = argparse.ArgumentParser(description='Incremental backup over Btrfs subvolumes tool')
+    subparsers = parser.add_subparsers(help='Available commands')
+
+    # Init parser options
+    init_parser = subparsers.add_parser('init',description='Initiate a backup directory')
+    init_parser.add_argument('DESTPATH',action='store',help='Backup directory path')
+    init_parser.set_defaults(func=rsbtbackup.init)
+
+    # Backup parser options
+    backup_parser = subparsers.add_parser('backup',description='Do an incremental backup')
+    backup_parser.add_argument('SRCPATH',action='store',help='Source directory path (local or remote)')
+    backup_parser.add_argument('DESTPATH',action='store',help='Backup directory path')
+    backup_parser.set_defaults(func=rsbtbackup.backup)
+
+    # Handling entry parameters and ad-hoc function execution if needed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(2)
+    args = parser.parse_args()
+    args.func(vars(args))
