@@ -16,7 +16,6 @@ Configuration
 =============
 
 * Btrfsrsync can be used as an importable library in another python script. Just import it in your script :
-
     $ vi /your/path/rsyncbtrfs
 
     #!/usr/bin/env python
@@ -24,7 +23,6 @@ Configuration
 
 
 * Btrfsrsync can be used as an standalone script. First, make it executable :
-
     $ chmod +x /your/path/rsyncbtrfs
 
 Usage
@@ -33,7 +31,6 @@ Usage
 To settle things, let's say that we manage a local server (our backup machine), and a remote server named "remote". We want to backup the local server's /etc directory and the remote server's /home directory. The local server has a btrfs partition mounted on /backup where the backups will lie.
 
 First, we need to create a directory for each backup. For example :
-
     $ mkdir -p /backup/localhost/etc
     $ mkdir -p /backup/remote/home
 
@@ -44,7 +41,6 @@ Depending of the usage type of rsyncbtrfs, init and backup will be done by these
 * As an importable library
 
 Rsyncbtrfs library gives access to the RsyncBtrfs class, refering to bounded methods init and backup. Theses methods accept one parameter variable taking the form of a python dictionnary. For init it must contain a DESTPATH string, for backup it must contain a DESTPATH and a SCRPATH string. An script example is given below :
-
     $ vi /your/path/rsyncbtrfs
 
     #!/usr/bin/env python
@@ -68,31 +64,26 @@ Rsyncbtrfs library gives access to the RsyncBtrfs class, refering to bounded met
 * As an standalone executable
 
 Initiate the backup directories :
-
     $ /your/path/rsyncbtrfs init /backup/localhost/etc
     $ /your/path/rsyncbtrfs init /backup/remote/home
 
 Do the backups :
-
     $ /your/path/rsyncbtrfs backup /etc /backup/localhost/etc
     $ /your/path/rsyncbtrfs backup remote:/etc /backup/localhost/etc
 
 In shell help can be shown with the commande :
-
     $ /your/path/rsyncbtrfs --help
 
 Result
 ======
 
 After the first backup, the backup directory will look like (for one usage example given before) :
-
     $ ls /backup/remote/home
     2014-11-16-09:00 cur
 
 The timestamped directory is a btrfs subvolume and contains the relative backup, and cur is a symlink pointing on the last backup (for our example, 2014-11-16-09:00).
 
 If we run the backup again, the backup directory will look like :
-
     $ ls /backup/remote/home
     2014-11-16-09:00 2014-11-16-10:00 cur
 
