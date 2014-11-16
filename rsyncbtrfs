@@ -36,7 +36,10 @@ class RsyncBtrfs:
         print("Initialization of backup directory '%s'" % (destpath))
         if not os.path.isfile(destpath+"/.log/rsyncbtrfs"):
             if not os.path.isdir(destpath+"/.log"):
-                os.mkdir(destpath+"/.log")
+                retcode = subprocess.call(["/sbin/btrfs","subvolume","create",destpath+"/.log"])
+                if retcode != 0:
+                    print("Error : invalid backup directory. It doesn't exist, is not writable or is not on a btrfs partition.")
+                    os.exit(1)
             try:
                 open(destpath+"/.log/rsyncbtrfs","a").close()
             except:
@@ -132,4 +135,4 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(2)
     args = parser.parse_args()
-    args.func(var(args))
+    args.func(vars(args))
