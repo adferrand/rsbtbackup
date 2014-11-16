@@ -1,6 +1,6 @@
-Rsynbtrfs is a simple python tool for incremental backups using rsync and taking advantage of the incremental snapshot capability of a btrfs subvolume.
+Rsynbtrfs is a simple python tool for rsync incremental backups that takes advantage of the incremental snapshot capability of a btrfs subvolume.
 
-This tool is inspired from the shell script developped by oxplot : https://github.com/oxplot/rsyncbtrfs.
+This tool is inspired from the shell script developed by oxplot : https://github.com/oxplot/rsyncbtrfs.
 
 Requirements
 ============
@@ -21,7 +21,7 @@ Btrfsrsync can be used as an importable library in another python script. Just i
     #!/usr/bin/env python
     from rsyncbtrfs import RsyncBtrfs
 
-Btrfsrsync can be used as an standalone script. First, make it executable :
+Btrfsrsync can be used as a standalone script. First, make it executable :
 
     $ chmod +x /your/path/rsyncbtrfs
 
@@ -62,7 +62,7 @@ Rsyncbtrfs library gives access to the RsyncBtrfs class, refering to bounded met
     mybackup.backup(args1)
     mybackup.backup(args2)
 
-* As an standalone executable
+* As a standalone executable
 
 Initiate the backup directories :
 
