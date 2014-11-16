@@ -1,4 +1,4 @@
-Rsynbtrfs is a simple python tool for incremental backups using rsync and taking advantage of the incremental snapshot capability of a btrfs subvolume.
+RsbtBackup is a simple python tool for incremental backups using rsync and taking advantage of the incremental snapshot capability of a btrfs subvolume.
 
 This tool is inspired from the shell script developped by oxplot : https://github.com/oxplot/rsyncbtrfs.
 
@@ -10,20 +10,20 @@ You will need rsync, btrfs-progs and of course, a backup partition formatted wit
 Install
 =======
 
-Just get the rsyncbtrfs file and put it anywhere on your backup machine (including outside the btrfs backup partition).
+Just get the rsbtbackup file and put it anywhere on your backup machine (including outside the btrfs backup partition).
 
 Configuration
 =============
 
-Btrfsrsync can be used as an importable library in another python script. Just import it in your script :
+RsbtBackup can be used as an importable library in another python script. Just import it in your script :
 
     $ vi /your/path/yourscript
     #!/usr/bin/env python
-    from rsyncbtrfs import RsyncBtrfs
+    from rsbtbackup import RsbtBackup
 
-Btrfsrsync can be used as an standalone script. First, make it executable :
+RsbtBackup can be used as an standalone script. First, make it executable :
 
-    $ chmod +x /your/path/rsyncbtrfs
+    $ chmod +x /your/path/rsbtbackup
 
 Usage
 =====
@@ -35,20 +35,20 @@ First, we need to create a directory for each backup. For example :
     $ mkdir -p /backup/localhost/etc
     $ mkdir -p /backup/remote/home
 
-Secondly, we initiate the backup directories and do the backups. The initiation must be done before any backup, otherwise the backup will be aborted : it creates a .log directory inside the backup directories. Within it lies a file named rsyncbtrfs, and a file name activity.log that contains all errors and informations generated during the backups. The activity.log file is automatically rotated into activity.log.1 when its size exceed 1Mo.
+Secondly, we initiate the backup directories and do the backups. The initiation must be done before any backup, otherwise the backup will be aborted : it creates a .log directory inside the backup directories. Within it lies a file named rsbtbackup, and a file name activity.log that contains all errors and informations generated during the backups. The activity.log file is automatically rotated into activity.log.1 when its size exceed 1Mo.
 
-Depending of the usage type of rsyncbtrfs, init and backup will be done by theses ways :
+Depending of the usage type of RsbtBackup, init and backup will be done by theses ways :
 
 * As an importable library
 
-Rsyncbtrfs library gives access to the RsyncBtrfs class, refering to bounded methods init and backup. Theses methods accept one parameter variable taking the form of a python dictionnary. For init it must contain a DESTPATH string, for backup it must contain a DESTPATH and a SCRPATH string. An script example is given below :
+RsbtBackup library gives access to the RsbtBackup class, refering to bounded methods init and backup. Theses methods accept one parameter variable taking the form of a python dictionnary. For init it must contain a DESTPATH string, for backup it must contain a DESTPATH and a SCRPATH string. An script example is given below :
 
-    $ vi /your/path/rsyncbtrfs
+    $ vi /your/path/rsbtbackup
     #!/usr/bin/env python
-    from rsyncbtrfs import RsyncBtrfs
+    from rsbtbackup import RsbtBackup
 
-    # New instance of RsyncBtrfs
-    mybackup = RsyncBtrfs()
+    # New instance of RsbtBackup
+    mybackup = RsbtBackup()
 
     # Initiate the backup directories
     args1 = {'DESTPATH':'/backup/localhost/etc'}
@@ -66,17 +66,17 @@ Rsyncbtrfs library gives access to the RsyncBtrfs class, refering to bounded met
 
 Initiate the backup directories :
 
-    $ /your/path/rsyncbtrfs init /backup/localhost/etc
-    $ /your/path/rsyncbtrfs init /backup/remote/home
+    $ /your/path/rsbtbackup init /backup/localhost/etc
+    $ /your/path/rsbtbackup init /backup/remote/home
 
 Do the backups :
 
-    $ /your/path/rsyncbtrfs backup /etc /backup/localhost/etc
-    $ /your/path/rsyncbtrfs backup remote:/etc /backup/localhost/etc
+    $ /your/path/rsbtbackup backup /etc /backup/localhost/etc
+    $ /your/path/rsbtbackup backup remote:/etc /backup/localhost/etc
 
 In shell help can be shown with the commande :
 
-    $ /your/path/rsyncbtrfs --help
+    $ /your/path/rsbtbackup --help
 
 Result
 ======
