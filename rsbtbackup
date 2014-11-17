@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# RsbtBackup [version 1.0.3]
+# RsbtBackup [version 1.0.4]
 #
 # RsbtBackup is a simple incremental backup tool which uses the 
 # incremental snapshot capability of a Btrfs subvolume.
@@ -75,8 +75,8 @@ class RsbtBackup:
                 self.subprocess_logged(["/sbin/btrfs","subvolume","create",destpath+"/pending"],logger)
             retcode = self.subprocess_logged(["/usr/bin/rsync","-a",srcpath+"/",destpath+"/pending"],logger)
         # We check if everything went well (rsync errcode 24 is ignored as not a real error in backup context)
-        if retcode != 0 and retcode != -24:
-            logger.error("An error (%s) occured during rsync execution. A pending backup lies in '%s'" % (-retcode,destpath+"/pending"))
+        if retcode != 0 and retcode != 24:
+            logger.error("An error (%s) occured during rsync execution. A pending backup lies in '%s'" % (retcode,destpath+"/pending"))
             raise OSError()
             sys.exit(1)
         # The backup has been done without issue. The subvolume takes its final name. The symlink cur points on the latter.
