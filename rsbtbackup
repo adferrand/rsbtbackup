@@ -30,11 +30,10 @@ import logging,logging.handlers
 # RsbtBackup class definition
 class RsbtBackup:
     # This function initiates a backup directory args.DESTPATH
-    @staticmethod
-    def init(args):
+    def init(self,args):
         destpath = args.pop('DESTPATH')
-        print("Initialization of backup directory '%s'" % (destpath))
-        if not os.path.isfile(destpath+"/.log/rsbtbackup"):
+        if not self.is_init(destpath):
+            print("Initialization of backup directory '%s'" % (destpath))
             if not os.path.isdir(destpath+"/.log"):
                 retcode = subprocess.call(["/sbin/btrfs","subvolume","create",destpath+"/.log"])
                 if retcode != 0:
@@ -53,7 +52,7 @@ class RsbtBackup:
         if not os.path.isdir(destpath):
             print("Error : invalid backup directory")
             sys.exit(1)
-        if not os.path.isfile(destpath+"/.log/rsbtbackup"):
+        if not self.is_init(destpath):
             print("The given backup directory is not initiated. The following command must be executed before any backup : 'rsbtbackup init %s'" % destpath)
             sys.exit(1)
         logger = self.start_logging(destpath+"/.log")
@@ -109,6 +108,11 @@ class RsbtBackup:
             logger.error(stderr)
         # Return the child code
         return process.returncode
+
+    # This function verifies if the backup directory is init
+    @staticmethod
+    def is_init(backup_directory):
+        return os.path.isfile(backup_directory+"/.log/rsbtbackup")
 
 # RsbtBackup execution by a shell
 if __name__ == "__main__":
