@@ -24,7 +24,7 @@
 import os,sys
 import argparse
 import subprocess
-import datetime
+import datetime,re
 import logging,logging.handlers
 
 # RsbtBackup class definition
@@ -67,7 +67,7 @@ class RsbtBackup:
                 if errcode != 0:
                     logger.error("An error (%s) occured while creating a snapshot of %s. Make sure that %s is a Btrfs subvolume." % (-errcode,real_cur_path,real_cur_path))
                     sys.exit(1)
-            retcode = self.subprocess_logged(["/usr/bin/rsync","--delete","--delete-before","--delete-excluded","--inplace","--no-whole-file","-a",srcpath+"/",destpath+"/pending"],logger)
+            retcode = self.subprocess_logged(["/usr/bin/rsync","--delete","--delete-before","--delete-excluded","--inplace" if args.pop('inplace') else "--no-inplace","--no-whole-file","-a",srcpath+"/",destpath+"/pending"],logger)
         else:
         # No backup has been done yet : full backup
             if not os.path.isdir(destpath+"/pending"):
@@ -76,13 +76,28 @@ class RsbtBackup:
         # We check if everything went well (rsync errcode 24 is ignored as not a real error in backup context)
         if retcode != 0 and retcode != 24:
             logger.error("An error (%s) occured during rsync execution. A pending backup lies in '%s'" % (retcode,destpath+"/pending"))
-            raise OSError()
+            raise OSError('Rsync execution error')
             sys.exit(1)
         # The backup has been done without issue. The subvolume takes its final name. The symlink cur points on the latter.
         self.subprocess_logged(["/bin/rm","-f",destpath+"/cur"],logger)
         self.subprocess_logged(["/bin/ln","-s",date_now_str,destpath+"/cur"],logger)
         os.rename(destpath+"/pending",destpath+"/"+date_now_str)
         logger.info("The backup of '%s' on '%s' has ended without error" % (srcpath,destpath))
+
+    # This function removes old backups from a backup directory
+    def rotate(self,args):
+        destpath = args.pop('DESTPATH')
+        if not self.is_init(destpath):
+            raise OSError('Not a backup directory')
+            sys.exit(1)
+        logger = self.start_logging(destpath+"/.log")
+        saves = self.get_ordered_saves(destpath)
+        delta = self.get_valid_timedelta(args.pop('DELTATIME'))
+        for save in saves:
+            save_datetime = datetime.datetime.strptime(save,'%Y-%m-%d-%H:%M:%S')
+            if datetime.datetime.today() - save_datetime >= delta:
+                self.subprocess_logged(['/sbin/btrfs','subvolume','delete','%s/%s' % (destpath,save)],logger)
+                logger.info("Rotation : the backup %s in %s is deleted" % (save,destpath))
 
     # This function activates the logging process of rsbtbackup
     @staticmethod
@@ -114,6 +129,38 @@ class RsbtBackup:
     def is_init(backup_directory):
         return os.path.isfile(backup_directory+"/.log/rsbtbackup")
 
+    # This function gets the backup names subvolume of a backup directory
+    @staticmethod
+    def get_ordered_saves(path):
+        saves = os.listdir(path)
+        try:
+            saves.remove('cur')
+        except:
+            pass
+        try:
+            saves.remove('.log')
+        except:
+            pass
+        try:
+            saves.remove('pending')
+        except:
+            pass
+        saves.sort()
+        return saves
+
+    @staticmethod
+    def get_valid_timedelta(string_time):
+        if re.match('^(\d+w)$',string_time) is not None:
+            delta = datetime.timedelta(weeks=int(string_time[:-1]))
+        elif re.match('^(\d+d)$',string_time) is not None:
+            delta = datetime.timedelta(days=int(string_time[:-1]))
+        elif re.match('^(\d+h)$',string_time) is not None:
+            delta = datetime.timedelta(hours=int(string_time[:-1]))
+        else:
+            raise OSError('Invalid time value')
+            os.exit(1)
+        return delta
+
 # RsbtBackup execution by a shell
 if __name__ == "__main__":
     # Initiate
@@ -132,7 +179,14 @@ if __name__ == "__main__":
     backup_parser = subparsers.add_parser('backup',description='Do an incremental backup')
     backup_parser.add_argument('SRCPATH',action='store',help='Source directory path (local or remote)')
     backup_parser.add_argument('DESTPATH',action='store',help='Backup directory path')
+    backup_parser.add_argument('-i','--inplace',action='store_true',help='Use inplace rsync algorithm (potential smaller backups but time expensive)')
     backup_parser.set_defaults(func=rsbtbackup.backup)
+
+    # Rotate parser options
+    rotate_parser = subparsers.add_parser('rotate',description='Remove old backups')
+    rotate_parser.add_argument('DESTPATH',action='store',help='Backup directory path')
+    rotate_parser.add_argument('DELTATIME',action='store',help='Specify the minimal age of the backups that will be deleted')
+    rotate_parser.set_defaults(func=rsbtbackup.rotate)
 
     # Handling entry parameters and ad-hoc function execution if needed
     if len(sys.argv) == 1:
