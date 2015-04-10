@@ -27,6 +27,7 @@ import subprocess
 import datetime,re
 import logging,logging.handlers
 
+# Hello !
 # Test2
 
 # RsbtBackup class definition
