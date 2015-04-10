@@ -27,6 +27,8 @@ import subprocess
 import datetime,re
 import logging,logging.handlers
 
+# Hello !
+
 # RsbtBackup class definition
 class RsbtBackup:
     # This function initiates a backup directory args.DESTPATH
